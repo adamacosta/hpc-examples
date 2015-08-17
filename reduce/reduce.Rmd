@@ -1,0 +1,70 @@
+---
+title: "Parallel Reduce Produces no Speedup for Simple Sum"
+author: "Adam Acosta"
+output: html_document
+---
+
+```{r, echo = FALSE}
+if (!file.exists('reduce.csv')) {
+    system('./reduce >> reduce.csv')
+}
+```
+
+## Summary
+
+Adding together 5 billion integers in an array (the most `uint8_t`s I could fit 
+without a segmentation fault) showed no speedup, and indeed a slow-down, when 
+implemented using the OpenMP parallel reduce model versus sequential code.
+
+### Sequential Code
+
+```{c, eval = FALSE}
+sum = 0;
+for (i = 0; i < LEN; i++)
+	sum += arr[i];
+```
+
+### Parallel Code
+
+```{c, eval = FALSE}
+sum = 0;
+#pragma omp parallel for reduction(+:sum)
+for (i = 0; i < LEN; i++) {
+	sum += arr[i];
+}
+```
+
+## Results
+
+n = 1000 trials
+
+Architecture:
+
+```{bash}
+lscpu
+```
+
+Visual analysis and a t-test both show the parallel implementation to be 
+slower than the sequential.
+
+```{r, message = FALSE}
+library(ggvis)
+library(tidyr)
+
+res <- read.csv('reduce.csv')
+
+res %>%
+    gather(Model, Time) %>%
+    ggvis(~Model, ~Time) %>%
+    layer_boxplots(stroke := 'steelblue') %>%
+    add_axis('y', title = 'seconds', title_offset = 60) %>%
+    add_axis('x', title = '')
+
+t.test(res$sequential, res$parallel)
+```
+
+
+## Conjecture
+
+This is probably due to cache invalidation due to the fact that `sum` is a shared 
+variable. 
