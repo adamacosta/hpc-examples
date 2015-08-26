@@ -1,0 +1,36 @@
+---
+title: "Parallel Quicksort"
+author: "Adam Acosta"
+output: html_document
+---
+
+```{r, echo = FALSE}
+if (!file.exists('qsort.csv')) {
+    system('./qsort >> qsort.csv')
+}
+```
+
+## Results
+
+Architecture:
+
+```{bash}
+lscpu
+```
+
+Visual analysis and a t-test both show the parallel implementation to be 
+slower than the sequential.
+
+```{r, message = FALSE}
+library(ggvis)
+library(tidyr)
+
+res <- read.csv('qsort.csv')
+
+res %>%
+    gather(Model, Time, -elements) %>%
+    ggvis(~elements / 1000, ~Time, stroke = ~Model) %>%
+    layer_lines() %>%
+    add_axis('y', title = 'seconds', title_offset = 60) %>%
+    add_axis('x', title = 'elements (thousands)')
+```
